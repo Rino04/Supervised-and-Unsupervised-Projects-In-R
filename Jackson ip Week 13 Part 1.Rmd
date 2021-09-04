@@ -1,0 +1,473 @@
+---
+title: "Jackson Ip Week 13 part 1"
+author: "Jackson Kyalo"
+date: "8/26/2021"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+# Define the Question
+A Kenyan entrepreneur has created an online cryptography course and would want to advertise it on her blog. She currently targets audiences originating from various countries. In the past, she ran ads to advertise a related course on the same blog and collected data in the process. She would now like to employ your services as a Data Science Consultant to help her identify which individuals are most likely     to click on her ads. 
+
+# The metric for success
+This project will be successful if we are able to determine which individuals are most likely to click on the ads.
+
+
+
+# The Outline context
+The number of clicks an ad has helps understand how well the ad is being received by its audience. Ads that are targeted to the right audience receive the highest number of clicks. In our case determining the best audience for the ads will help company grow as well as increase the number of clicks and reach. 
+
+# Experimental design
+1. Define the Questions.
+2. Import, load and preview the data.
+3. Data Cleaning.
+4. Data Analysis.
+5. Conclusion and Recommendation.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Importing the libraries
+```{r}
+#Import the data library
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+library(caret)
+library(caretEnsemble)
+library(psych)
+library(Amelia)
+library(mice)
+library(GGally)
+library(rpart)
+library(randomForest)
+```
+### Load the dataset
+```{r}
+#Load our data
+dt=read.csv('C:/Users/Rino/Desktop/Remote/advertising.csv')
+```
+
+### Preview the data
+```{r}
+# preview the head
+head(dt)
+```
+
+```{r}
+#Change the male column name to be gender
+names(dt)[names(dt)== 'Male']<-'Gender'
+```
+
+
+### Preview tail
+```{r}
+tail(dt)
+```
+### Check the info
+```{r}
+str(dt)
+```
+
+```{r}
+#dt$Date <- as.Date(df$Timestamp)
+#df$Time <- format(df$Timestamp,"%H:%M:%S")
+```
+
+
+### Check the shape
+```{r}
+dim(dt)
+#Our code has 1000 rows and 10 columns
+```
+
+
+# Data Cleaning
+
+### Check for missing data(Null values)
+```{r}
+sum(is.na(dt))
+```
+Our data has no missing data
+
+### Check for duplicates
+```{r}
+#checking for duplicates
+duplicated <- dt[duplicated(dt),]
+duplicated
+```
+There are no duplicated rows/values in our data
+
+### Check for outliers
+```{r}
+### Identify numeric cols
+nums <- unlist(lapply(dt, is.numeric)) 
+y<- colnames(dt[nums])
+y
+```
+
+### Check fo outliers
+```{r}
+boxplot(dt[c('Age','Daily.Internet.Usage','Clicked.on.Ad','Daily.Time.Spent.on.Site','Gender')])
+```
+
+```{r}
+# checking for outliers on Daily Internet Usage
+boxplot(dt$Daily.Internet.Usage)
+```
+```{r}
+# checking for outliers on Age
+boxplot(dt$Age)
+```
+
+
+```{r}
+# checking for outliers on Area.Income
+boxplot(dt$Area.Income)
+```
+There are outliers in area income column
+```{r}
+boxplot.stats(dt$Area.Income)$out
+#checking the values in area income that are outliers
+```
+```{r}
+# checking for outliers on Daily.Time.Spent.on.Site
+boxplot(dt$Daily.Time.Spent.on.Site)
+```
+```{r}
+# checking for outliers on Male
+boxplot(dt$Gender)
+```
+
+```{r}
+# checking for outliers on Clicked.on.Ad
+boxplot(dt$Clicked.on.Ad)
+```
+There are no outliers in our data except Area.Income.
+
+# Data Analysis
+
+## Univarient Analysis
+### Measure of central tendacy
+
+```{r}
+describe(dt)
+```
+
+
+```{r}
+#Getting the statistical summaries of the data
+summary(dt)
+```
+From the above we can see that maximum daily time spent on site is 91 mins while the minimum time spent is 32 mins. In average time spent on the blog is 65 minutes. The maximum age of the customers visiting the 61 years while the minimum age is 19 years. However the average age of viewers is 35 years. The average income earned by their viewers is 55,000 with the maximum amount earned being 79,000 and minimum amount is 13996.
+
+
+### Measure of dispersion
+```{r}
+#create a function
+library(moments)
+summary.list = function(x)list(
+  Mean=mean(x, na.rm=TRUE),
+  Median=median(x, na.rm=TRUE),
+  Skewness=skewness(x, na.rm=TRUE),
+  Kurtosis=kurtosi(x, na.rm=TRUE),
+  Variance=var(x, na.rm=TRUE),
+  Std.Dev=sd(x, na.rm=TRUE),
+  Coeff.Variation.Prcnt=sd(x, na.rm=TRUE)/mean(x, na.rm=TRUE)*100,
+  Std.Error=sd(x, na.rm=TRUE)/sqrt(length(x[!is.na(x)]))
+)
+```
+
+Calling the function for each column
+```{r}
+#For Daily.Time.Spent.on.Site
+summary.list(dt$Daily.Time.Spent.on.Site)
+```
+
+```{r}
+#For Age
+summary.list(dt$Age)
+```
+```{r}
+#For Daily.Time.Spent.on.Site
+summary.list(dt$Area.Income)
+```
+```{r}
+#For Daily.Internet.Usage
+summary.list(dt$Daily.Internet.Usage)
+```
+#### Summaries when ad is cliecked
+```{r}
+#Get the summaries when there is a click
+dt.sub <- subset(dt, Clicked.on.Ad == 1)
+```
+Summaries
+```{r}
+summary(dt.sub)
+```
+When there was a click on the ad, the average time spent was 53 mins, with the average age of the viewers being 40 years. The average income of the viewers who viewed the ads was 48,000 and they spent in an average 145 minutes on the internet.
+
+### Distribution of Numeric columns 
+```{r}
+#For Age
+hist(dt$Age, 
+     main = "Daily Time Spent on Site",
+     xlab = "Daily Time Spent on Site",
+     col = "aquamarine2")
+```
+
+Most respondents fall in the age bracket 25-40 years.
+```{r}
+# Histograms for Daily.Time.Spent.on.Site
+hist(dt$Daily.Time.Spent.on.Site,
+  main = "Daily Time Spent on Site",
+  xlab = "Daily Time Spent on Site",
+  col = "cyan1")
+```
+Daily time speant on site is skewed to the left.Most time spent is between 75 mins to 85 mins.
+```{r}
+# Histograms for Area Income
+hist(dt$Area.Income,
+  main = "Area Income",
+  xlab = "Area Income",
+  col = "deepskyblue")
+```
+The area income columns is skewed to the left.Most respondent spend between 55,000 to 7,0000.
+
+
+```{r}
+# Histograms for Area Income
+df<-table(dt$Gender)
+```
+```{r}
+# Create a vector of labels
+lbls<- c("Males", "Females")
+pct <- round(df/sum(df)*100)
+lbls <- paste(lbls, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(df, 
+    labels <- lbls,
+    col = c("cyan", "pink"),
+    main="Gender")
+```
+
+
+```{r}
+# Histograms for Daily.Time.Spent.on.Site
+hist(dt$Daily.Internet.Usage,
+  main = "Daily Internet Usage",
+  xlab = "Daily Internt Usage",
+  col = "orangered")
+```
+## Bivarient Analysis
+
+### Correlation matrix
+```{r}
+cor(dt[,unlist(lapply(dt, is.numeric))])
+```
+The Table shows the correlations between each columns. The most correlated features are daily internet usage and daily time spent on the site while the least correlated items are clicks on ad and daily internet usage. There is positive correlation between age an clicks on ads. 
+
+## Scatter plots
+Let's plot a scatter plot for age and daily time spent on site.
+```{r}
+plot(dt$Age,dt$Daily.Time.Spent.on.Site, 
+     xlab = "Age Distribution",
+     ylab = "Time Spent on Site",
+     col="skyblue4")
+```
+Most customers spending the largest amount of time in the sites are between 37yrs and 45 years
+
+Let's plot a scatter plot for age and daily internet usage.
+```{r}
+plot(dt$Age,dt$Daily.Internet.Usage, 
+     xlab = "Age Distribution",
+     ylab = "Internet Usage",
+     col="skyblue3")
+```
+Let's plot a scatter plot for age and Area Income.
+```{r}
+plot(dt$Age,dt$Area.Income, 
+     xlab = "Age Distribution",
+     ylab = "Area income",
+     col="skyblue3")
+```
+Most of the customers with the highest area income are between 40 and 45 years.
+
+
+### Covariance
+```{r}
+#Covariance between age and daily time spent
+cov(dt$Age, dt$Daily.Time.Spent.on.Site)
+```
+The covariance of Age and Daily.Time.Usage variable is about -46.17415, It indicates a negative linear relationship between the two variables
+
+```{r}
+# Covariance between age and daily internet usage 
+cov(dt$Age, dt$Daily.Internet.Usage)
+```
+The covariance of Age and Daily.Internet.Usage variable is about -141.6348, It indicates a negative linear relationship between the two variables
+```{r}
+#Covariance between age and area income
+cov(dt$Age, dt$Area.Income)
+```
+The covariance of Age and area income variable is about -21520.93, It indicates a negative linear relationship between the two features.
+```{r}
+#Covariance between age and clicks
+cov(dt$Age, dt$Clicked.on.Ad)
+```
+The covariance of Age and clicks on ad variable is about 2.164665, It indicates a positive linear relationship between the two features.
+
+```{r}
+#Covariance between age and gender
+cov(dt$Age, dt$Gender)
+```
+The covariance of Age and gender variable is about  -0.09242142, It indicates a negative linear relationship between the two features.
+
+# EDA  Conclusion
+1. From the above we can see that maximum daily time spent on site is 91 mins while the minimum time spent is 32 mins. In average time spent on the blog is 65 minutes. 
+2. The maximum age of the customers visiting the 61 years while the minimum age is 19 years. However the average age of viewers is 35 years. 
+3. The average income earned by their viewers is 55,000 with the maximum amount earned being 79,000 and minimum amount is 13996.
+4. When there was a click on the ad, the average time spent was 53 mins, with the average age of the viewers being 40 years. The average income of the viewers who viewed the ads was 48,000 and they spent in an average 145 minutes on the internet.
+5. Most respondents fall in the age bracket 25-40 years.
+6. Daily time speant on site is skewed to the left.Most time spent is between 75 mins to 85 mins.
+7. The area income columns is skewed to the left.Most respondent spend between 55,000 to 7,0000.
+8. The Table shows the correlations between each columns. The most correlated features are daily internet usage and daily time spent on the site while the least correlated items are clicks on ad and daily internet usage. There is positive correlation between age an clicks on ads. 
+9. Most customers spending the largest amount of time in the sites are between 37yrs and 45 years
+
+# EDA Recommendation
+1. The ads should target people with an income between 50,000 and 70,000 since they are the people most interested with the ad. 
+2. We recommend that ads to be tailor to suit viewers of the age group between 25 years and 40 years.
+3. Our client should tailor the course to be less than 85 mins or between 75 mins and 85 mins.
+
+# Modelling
+
+## KNN
+```{r}
+#preview the data
+head(dt)
+```
+
+```{r}
+#Drop irrelevant columns
+dt_new<-dt[-c(5,6,8,9)]
+head(dt_new)
+```
+
+
+### Normalizing the data and scaling our data
+```{r}
+library(caret)
+#we shall use range method as it suppress the effect of outliers
+preproc1 <- preProcess(dt_new, method=c("range"))
+ 
+norm1 <- predict(preproc1, dt_new)
+ 
+summary(norm1)
+```
+## Split the data; train and test dataset.seed(101) # Set Seed so that same sample can be reproduced in future also
+```{r}
+set.seed(123) # Set Seed so that same sample can be reproduced in future also
+# Now Selecting 80% of data as sample from total 'n' rows of the data  
+sample <- sample.int(n = nrow(norm1), size = floor(.80*nrow(norm1)), replace = F)
+train <- norm1[sample, ]
+test  <- norm1[-sample, ]
+dim(test)
+dim(train)
+```
+The test dataset has 200 rows with the train dataset has 800 rows.
+
+### KNN Aligorithm 
+```{r}
+library(class) #The library contains the aligorithm
+#The total number of rows are 1000. To get the best value of k we shall get the sqrt of the 1000
+sqrt(1000)
+
+```
+Our value of K = 32
+###Fit the model and evaluate the model
+```{r}
+# fitting KNN classifier to the training set and predicting the test set results
+
+y_pred = knn(train = train[,-6],
+             test = test[,-6],
+             cl = train[,6],
+             k = 32)
+# Creating the confusion matrix
+tb <- table(y_pred,test[,6])
+tb
+# Checking the accuracy
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(tb)
+```
+
+The model has been corrected identified 111 true positive and 85 true negatives with 4 being identified as false positive and 0 as false negatives.The model has achieved an accuracy of 98%
+
+## Decision Trees
+```{r}
+library(rpart)
+library(rpart.plot)
+model <- rpart(formula = Clicked.on.Ad~ ., data = norm1,
+           method = "class")
+
+rpart.plot(model)
+```
+```{r}
+#Predicting 
+pred <- predict(model, norm1, type = "class")
+#Classification report
+cl_table<-table(pred, norm1$Clicked.on.Ad)
+cl_table
+#Get accuracy
+accuracy(cl_table)
+```
+The model has been corrected identified 485 true positive and 472 true negatives with 28 being identified as false positive and 15 as false negatives.The model has achieved an accuracy of 95.7%
+
+## SVN
+#### fit the model and evaluate it
+```{r}
+library(e1071)
+model_svn = svm(formula =Clicked.on.Ad~.,
+                  data = train,
+                  type = 'C-classification',
+                  kernel = 'linear')
+# prediction
+pred_svn<- predict(model_svn, newdata = test[-6])
+#Evaluate the model
+#confusion matrix
+clm <- table(test[,6],pred_svn)
+clm
+#accuracy
+accuracy(clm)
+```
+The model has been able to identify 110 true positive and 86 true negatives with 1 being identified as false positive and 3 as false negatives. The accuracy achieved was 98%.
+
+## Naives Bayes
+#### Fit the model and evaluate the model
+```{r}
+model_naives = naiveBayes(x = train[-6],
+                        y = train$Clicked.on.Ad)
+# Predicting 
+pred_naives = predict(model_naives, newdata = test[-6])
+#Evaluate the model
+#confusion matrix
+clm_naives <- table(test[,6],pred_naives)
+clm_naives
+#accuracy
+accuracy(clm_naives)
+```
+The model has been able to identify 109 true positive and 86 true negatives with 2 being identified as false positive and 3 as false negatives. The accuracy achieved was 97.5%.
+
+# Conclusion
+SVN model performed the best with an accuracy score of 98%.
+
+
+
+
+
+
+
+
+
+
