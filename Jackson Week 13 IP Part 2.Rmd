@@ -1,0 +1,391 @@
+---
+title: "Jackson Week 13 IP Part 2"
+author: "Jackson Kyalo"
+date: "9/3/2021"
+output:
+  word_document: default
+  html_document: default
+---
+
+# Define the Question
+Kira Plastinina  is a Russian brand that is sold through a defunct chain of retail stores in Russia, Ukraine, Kazakhstan, Belarus, China, Philippines, and Armenia. The brand’s Sales and Marketing team would like to understand their customer’s behavior from data that they have collected over the past year. More specifically, they would like to learn the characteristics of customer groups. 
+
+# The metric for success
+This project will be successful if we are able to determine which individuals are most likely to click on the ads.
+
+
+
+# The Outline context
+The number of clicks an ad has helps understand how well the ad is being received by its audience. Ads that are targeted to the right audience receive the highest number of clicks. In our case determining the best audience for the ads will help company grow as well as increase the number of clicks and reach. 
+
+# Experimental design
+1. Define the Questions.
+2. Import, load and preview the data.
+3. Data Cleaning.
+4. Data Analysis.
+5. Conclusion and Recommendation.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Importing the libraries
+```{r}
+#Import the data library
+library(data.table)
+library(tidyverse)
+library(ggplot2)
+library(moments)
+
+```
+
+### Load the dataset
+```{r}
+#Load our data
+ecomm=read.csv('http://bit.ly/EcommerceCustomersDataset')
+```
+### Preview the data
+```{r}
+# preview the head
+head(ecomm)
+```
+
+### Preview tail
+```{r}
+tail(ecomm)
+```
+### Check the info
+```{r}
+str(ecomm)
+```
+
+### Check the shape
+```{r}
+dim(ecomm)
+```
+Our code has 1000 rows and 10 columns
+
+# Data Cleaning
+
+### Missing values
+```{r}
+#check for missing values
+sum(is.na(ecomm))
+```
+Our data has 112 missing values
+```{r}
+#check the missing values in each column
+colSums(is.na(ecomm))
+```
+```{r}
+#We shall drop the missing values in each columns
+df <- na.omit(ecomm)
+colSums(is.na(df))
+```
+### Duplicates
+```{r}
+#Check for duplicates
+sum(duplicated(df))
+```
+Our data has 117 duplicated rows. We shall drop all duplicates by selecting only the unique values
+```{r}
+#selecting the unique values
+df_new <-unique(df)
+sum(duplicated(df_new))
+```
+```{r}
+### Identify numeric cols
+nums <- unlist(lapply(df_new, is.numeric)) 
+y<- colnames(df_new[nums])
+y
+```
+
+
+### Check fo outliers
+
+```{r}
+#Create a dataframe of numeric cols
+num <-df_new[y]
+head(num)
+```
+
+```{r}
+#Using boxplots to visulize the outliers
+for(i in 2:ncol(num)) {                              
+  boxplot(num[i], xlab=colnames(num[i]))
+}
+```
+
+
+# Data Analysis
+
+### Univarient Analysis
+```{r}
+#Getting the statistical summaries of the data
+summary(df_new)
+```
+
+```{r}
+#getting measure of dispersion fro each cols
+#Create a function
+library(moments)
+summary.list = function(x)list(
+  Mean=mean(x, na.rm=TRUE),
+  Median=median(x, na.rm=TRUE),
+  Skewness=skewness(x, na.rm=TRUE),
+  Kurtosis=kurtosis(x, na.rm=TRUE),
+  Variance=var(x, na.rm=TRUE),
+  Std.Dev=sd(x, na.rm=TRUE),
+  Coeff.Variation.Prcnt=sd(x, na.rm=TRUE)/mean(x, na.rm=TRUE)*100,
+  Std.Error=sd(x, na.rm=TRUE)/sqrt(length(x[!is.na(x)]))
+)
+```
+
+
+
+
+```{r}
+#Calling the function and applying the function
+sapply(df_new[,c(y)], summary.list)
+```
+
+
+
+#Plots
+```{r}
+library(tidyverse)
+# Histograms for Area Income
+hist(df_new$Administrative,
+  main = "Administrative",
+  xlab = "Administrative",
+  col = "deepskyblue")
+```
+## Bivarient Analysis
+
+```{r}
+#We shall use loops to visuize how each column behave aganist revenue
+for(i in 2:ncol(num)) {                              # Printing ggplot within for-loop
+  print(ggplot(num, aes(x= num[ , i],fill = df_new$Revenue, color = df_new$Revenue, )) +
+          geom_bar()+labs(title = 'df_new[i]')+labs(title=colnames(df_new[i]), x=colnames(df_new[i])))
+}
+```
+
+
+### Categorical months
+```{r}
+# Visualize revenue against months
+barplot(table(df_new$Revenue, df_new$Month), main = "Revenue per Month", col = c("orange", "green"), beside = TRUE, 
+legend = rownames(table(df_new$Revenue, df_new$Month)), ylab="revenue", xlab = "Month")
+```
+November returns the highest number of revenues while February returns the lowest.
+
+```{r}
+# Visualize revenue against Operating System
+barplot(table(df_new$Revenue, df_new$OperatingSystems), 
+        main = "Revenue per Operating System", 
+        col = c('Orange', "green"), beside = TRUE, 
+        legend = rownames(table(df_new$Revenue, df_new$OperatingSystems)),
+        ylab="revenue", 
+        xlab = "Operating System")
+```
+Operating System 2 returns the highest number of revenue while OS 5, 6, and 7 return the lowest.
+
+```{r}
+# plotting the distribution of Revenue per Browser
+barplot(table(df_new$Revenue, df_new$Browser), 
+        main = "Revenue per Browser", 
+        col = c("orange", "green"),
+        beside = TRUE, 
+        legend = rownames(table(df_new$Revenue, df_new$Browser)),
+        ylab="revenue", 
+        xlab = "Browser")
+```
+Browser 2 returns the highest number of revenue while 3, 7, 9, 11, and 12 return the lowest.
+
+
+```{r}
+# plotting the distribution of Revenue per Region
+barplot(table(df_new$Revenue, df_new$Region), 
+        main = "Revenue per Region", 
+        col = c("orange", "green"), beside = TRUE, 
+        legend = rownames(table(df_new$Revenue, df_new$Region)), 
+        ylab="revenue", xlab = "Region")
+```
+Region 1 returns the highest number of revenue, Region 5 and 8 returns the lowest.
+
+
+```{r}
+# plotting the distribution of Revenue per Traffic Type
+barplot(table(df_new$Revenue, df_new$TrafficType), 
+        main = "Revenue per Traffic Type",
+        col = c("orange", "green"), beside = TRUE, 
+        legend = rownames(table(df_new$Revenue, df_new$TrafficType)),
+        ylab="revenue", xlab = "Traffic Type")
+```
+Traffic 2 has the highest number of revenues, 12, 14 and 18 return the lowest.
+
+
+```{r}
+# plotting the distribution of Revenue per Visitor Type
+barplot(table(df_new$Revenue, df_new$VisitorType), 
+        main = "Revenue per Visitor Type", 
+        col = c("orange", "green"), beside = TRUE, 
+        legend = rownames(table(df_new$Revenue, df_new$VisitorType)),
+        ylab="revenue", xlab = "Visitor Type")
+```
+Returning visitors brought more revenue with new vistors generating around 1000.
+
+```{r}
+# plotting the distribution of Revenue per Weekend
+barplot(table(df_new$Revenue, df_new$Weekend), 
+        main = "Revenue per Weekend", 
+        col = c("orange", "green"),beside = TRUE, 
+        legend = rownames(table(df_new$Revenue, df_new$Weekend)),
+        ylab="revenue", xlab = "Weekend")
+```
+More revenue was generated during the weekdays than the weekends.
+
+
+
+
+```{r}
+#check the correlation
+cor(df_new[,unlist(lapply(df_new, is.numeric))])
+```
+
+
+```{r}
+#install.packages("corrplot") 
+library(corrplot)
+#
+## Let’s build a correlation matrix to understand the relation between each attributes
+corrplot(cor(num), method = 'number')
+```
+
+```{r}
+#drop cols highly correlated 
+col_drop <- c("Administrative_Duration", "Informational_Duration", "ProductRelated_Duration", "ExitRates")
+df_new <- df_new[, !names(df_new) %in% col_drop]
+head(df_new)
+```
+
+# Modelling
+```{r}
+#Check head
+head(df_new)
+```
+
+
+```{r}
+#selecting data without revenue
+data<-df_new[,-14]
+head(data)
+```
+```{r}
+# Create custom function to fix data types and round
+to_numeric_and_round_func <- function(x){
+  round(as.numeric(as.character(x)),2)
+}
+# Mutate the columns to proper data type
+data <- data %>%
+  mutate_at(vars(-one_of("Month", "Region", "VisitorType", "Weekend")), to_numeric_and_round_func)
+```
+
+
+```{r}
+# create clean data with no NA
+clean_data <- data %>%
+  drop_na()
+```
+
+##Kmeans
+```{r}
+# Set seed
+set.seed(1234)
+col.names<-c("Month", "VisitorType", "Weekend")
+
+# Cluster Analysis - kmeans
+kmeans_basic <- kmeans(clean_data[, !names(data) %in% col.names], centers = 5)
+kmeans_basic_table <- data.frame(kmeans_basic$size, kmeans_basic$centers)
+kmeans_basic_df <- data.frame(Cluster = kmeans_basic$cluster, data)
+# head of df
+head(kmeans_basic_df)
+```
+
+
+```{r}
+# Visulize the clusters per month
+ggplot(data = kmeans_basic_df, aes(y = Cluster)) +
+  geom_bar(aes(fill = Month)) +
+  ggtitle("Count of Clusters by Month") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### elbow method
+```{r}
+library(factoextra)
+data_norm <-scale(clean_data[, !names(data) %in% col.names])
+# Get the optimum number of clusters
+fviz_nbclust(data_norm, kmeans, method = "wss")
+```
+
+The optimum clusters from the above is 3.
+
+```{r}
+#kmeans
+kmeans_fancy <- kmeans(data_norm, 3, nstart = 20)
+
+# plot the clusters
+fviz_cluster(kmeans_fancy, data = data_norm, geom = c("point"),ellipse.type = "euclid")
+```
+
+```{r}
+#Check the size of each cluster
+kmeans_fancy $size
+```
+The first cluster has 8885 values, second has 1561 and third has 1753 values
+```{r}
+# check their response to revenue
+table(kmeans_fancy$cluster, df_new$Revenue)
+```
+
+```{r}
+data %>% 
+  mutate(Cluster = kmeans_fancy$cluster) %>%
+  group_by(Cluster) %>%
+  summarize_all('median')
+```
+
+
+## Hierarchical clustering
+```{r}
+library(cluster)
+# compute the euclidean distance using euclidean metric
+eucl_dist<- dist(data_norm, method = "euclidean")
+#compute hierarchical clustering using the Ward method
+res_hc<- hclust(eucl_dist, method =  "ward.D2")
+res_hc
+```
+
+```{r}
+# plot the obtained dendrogram
+plot(res_hc, cex = 0.6, hang = -1)
+```
+
+```{r}
+# compute the euclidean distance using manhattan metric
+eucl_dist_man<- dist(data_norm, method = "manhattan")
+#compute hierarchical clustering using the Ward method
+res_hc_man<- hclust(eucl_dist_man, method =  "ward.D2")
+res_hc_man
+```
+
+
+```{r}
+# plot the obtained dendrogram
+plot(res_hc_man, cex = 0.6, hang = -1)
+```
+
+
+
+
