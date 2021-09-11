@@ -20,4 +20,4 @@ R
 To easily use this code you need: R studio,R
 
 ## Contact Details
-Incase of enquiries,additional suggestions or concerns,get in touch. jackkyalo978@gmail.co
+Incase of enquiries,additional suggestions or concerns,get in touch. jackkyalo978@gmail.com
